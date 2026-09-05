@@ -44,5 +44,6 @@ int main() {
 	generateData("itemdata.txt", "../Diablo Edit2/itemdata.dat");
 	generateData("property.txt", "../Diablo Edit2/property.dat");
 	generateData("language.txt", "../Diablo Edit2/language.dat");
+	generateData("miscdata.txt", "../Diablo Edit2/miscdata.dat");
 	return 0;
 }

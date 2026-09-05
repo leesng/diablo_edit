@@ -10,7 +10,7 @@ using namespace std;
 const CPropertyField & CPropertyField::Normalize() {
 	ASSERT(0 <= bits && 0 <= min);
 	if (0 == max)
-		max = (1 << bits) - 1;
+		max = (QWORD(1) << bits) - 1;
 	ASSERT(min <= max);
 	return *this;
 }
@@ -25,10 +25,10 @@ CPropertyMetaDataItem::CPropertyMetaDataItem(DWORD verMin, const vector<CPropert
 	bitsSum_ = accumulate(fields_.begin(), fields_.end(), 0, [](auto s, auto f) { return s + f.bits; });
 }
 
-vector<int> CPropertyMetaDataItem::Parse(DWORD value) const {
+vector<int> CPropertyMetaDataItem::Parse(QWORD value) const {
 	vector<int> ret;
 	for (auto & f : fields_) {
-		const auto MASK = (DWORD(1) << f.bits) - 1;
+		const auto MASK = (QWORD(1) << f.bits) - 1;
 		ret.push_back((value & MASK) + f.base);
 		value >>= f.bits;
 	}
@@ -42,22 +42,22 @@ void CPropertyMetaDataItem::Normalise(std::vector<int>& params) const {
 }
 
 
-vector<tuple<int, int, int>> CPropertyMetaDataItem::GetParams(DWORD value) const {
+vector<tuple<int, int, int>> CPropertyMetaDataItem::GetParams(QWORD value) const {
 	vector<tuple<int, int, int>> ret;
 	for (auto & f : fields_) {
 		if (f.bits < 1)
 			break;
-		ret.emplace_back(value & ((DWORD(1) << f.bits) - 1), f.min, f.max);
+		ret.emplace_back(value & ((QWORD(1) << f.bits) - 1), f.min, f.max);
 		value >>= f.bits;
 	}
 	return ret;
 }
 
-pair<BOOL, DWORD> CPropertyMetaDataItem::GetValue(const std::vector<int> & params) const {
+pair<BOOL, QWORD> CPropertyMetaDataItem::GetValue(const std::vector<int> & params) const {
 	int i = 0, s = 0;
-	DWORD r = 0;
+	QWORD r = 0;
 	for (auto & f : fields_) {
-		DWORD v = i < int(params.size()) ? params[i] : 0;
+		QWORD v = i < int(params.size()) ? params[i] : 0;
 		if (int(v) < f.min || f.max < int(v))
 			return make_pair(FALSE, 0);
 		r += v << s;
@@ -76,9 +76,9 @@ void CPropertyMetaData::addData(const CPropertyMetaDataItem& item) {
 	data_.insert(wh, item);
 }
 
-const CPropertyMetaDataItem& CPropertyMetaData::findData(DWORD version) const {
+const CPropertyMetaDataItem& CPropertyMetaData::findData(DWORD version, DWORD mod = 0) const {
 	for (auto& item : data_)
-		if (item.matchVersion(version))
+		if (item.matchVersion(version, mod))
 			return item;
 	ASSERT(!data_.empty());
 	return data_.back();

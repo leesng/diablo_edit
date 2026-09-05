@@ -1660,7 +1660,7 @@
 	Unused		
 	Unused		
 	Level %+d %s (%d/%d Charges)	等级 %+d %s (%d/%d 聚气)	
-	Unused		
+	%+d%% Chance to not consume Quantity	%+d%% 几率不消耗数量	
 	Unused		
 	Unused		
 	Unused		
@@ -1814,6 +1814,112 @@
 	Quest Item Difficulty %d	任务物品难度 %d	任務物品難度 %d
 	Passive Magic Mastery %d	支配魔法 %d	支配魔法 %d
 	Passive Magic Pierce %d	魔法穿透 %d	魔法穿透 %d
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
+	Uncoded		
 *=======================以下是怪物名称(Monster Names)			
 	Skeleton		
 	Returned		

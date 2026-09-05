@@ -125,6 +125,10 @@ BOOL CDiabloEdit2App::InitInstance()
 		::MessageBox(0, _T("Load character resource failed."), _T("Error"), MB_OK | MB_ICONERROR);
 		return FALSE;
 	}
+	if (!ReadMiscRes()) {
+		::MessageBox(0, _T("Load miscdata resource file failed."), _T("Error"), MB_OK | MB_ICONERROR);
+		return FALSE;
+	}
 	// 如果一个运行在 Windows XP 上的应用程序清单指定要
 	// 使用 ComCtl32.dll 版本 6 或更高版本来启用可视化方式，
 	//则需要 InitCommonControlsEx()。  否则，将无法创建窗口。
@@ -181,7 +185,6 @@ BOOL CDiabloEdit2App::InitInstance()
 	ParseCommandLine(cmdInfo);
 
 
-
 	// 调度在命令行中指定的命令。  如果
 	// 用 /RegServer、/Register、/Unregserver 或 /Unregister 启动应用程序，则返回 FALSE。
 	if (!ProcessShellCommand(cmdInfo))
@@ -206,6 +209,38 @@ int CDiabloEdit2App::ExitInstance() {
 	AfxOleTerm(FALSE);
 
 	return CWinApp::ExitInstance();
+}
+
+void CDiabloEdit2App::ParseCommandLine(CCommandLineInfo& rCmdInfo)
+{
+	int i;
+	int modArgN;
+
+	//获取 mod 信息
+	modArgN = 0;
+	for (i = 1; i + 1 < __argc; i++) {
+		if (CString(__targv[i]) == CString(_T("-mod"))) {
+			m_abModName = CString(__targv[i + 1]);
+			modArgN = 2;
+			break;
+		}
+	}
+	m_nModIndex = ModNameToIndex(m_abModName);
+	//m_abModName.Format(_T("m_nModIndex=%d\n"), m_nModIndex);
+	
+	for (i = 1; i + modArgN < __argc; i++)
+	{
+		LPCTSTR pszParam = __targv[i];
+		BOOL bFlag = FALSE;
+		BOOL bLast = ((i + 1) + modArgN == __argc);
+		if (pszParam[0] == '-' || pszParam[0] == '/')
+		{
+			// remove flag specifier
+			bFlag = TRUE;
+			++pszParam;
+		}
+		rCmdInfo.ParseParam(pszParam, bFlag, bLast);
+	}
 }
 
 template<typename T,class Array>
@@ -336,7 +371,8 @@ BOOL CDiabloEdit2App::ReadNewChar() {
 	if (!get<0>(t))
 		return FALSE;
 	CInBitsStream bs(reinterpret_cast<const BYTE *>(get<0>(t)), get<1>(t));
-	m_stNewCharacter.ReadData(bs);
+	if (m_nModIndex == 0) // 当前mod 没有新角色模板
+		m_stNewCharacter.ReadData(bs);
 	FreeResource(get<2>(t));
 	return (bs.Good() ? TRUE : FALSE);
 }
@@ -355,7 +391,7 @@ BOOL CDiabloEdit2App::ReadLangRes(void) {
 		if (trim(line).empty())	//空行
 			continue;
 		else if (line[0] == '*') {	// New section
-			base = (langs.empty() ? 0 : langs[0].size());
+			base = (langs.empty() ? 0 : (UINT)langs[0].size());
 			idx = 0;
 			if(base)
 				bases.push_back(base);
@@ -391,7 +427,7 @@ BOOL CDiabloEdit2App::ReadLangRes(void) {
 		}
 	}
 	if(!langs.empty())
-		bases.push_back(langs[0].size());
+		bases.push_back((UINT)langs[0].size());
 	//Decorate
 	for (size_t i = 1; i < langs.size(); ++i) {
 		auto & lang = langs[i];
@@ -511,7 +547,32 @@ BOOL CDiabloEdit2App::ReadPropRes() {
 	return TRUE;
 }
 
-CString CDiabloEdit2App::PropertyDescription(DWORD version, WORD id, DWORD value) const {
+BOOL CDiabloEdit2App::ReadMiscRes() {
+	// Load resource
+	string out_buf = loadCompressedBinaryResource(IDR_BINARY5, "MISC");
+	if (out_buf.empty())
+		return FALSE;
+	// Deserialize data
+	istringstream iss(out_buf);
+	//decltype(m_vMiscMetaData) miscs;
+	for (string line; getline(iss, line);) {
+		line = trim(line);
+		if (line.empty() || line[0] == '*')	//空行或注释
+			continue;
+		
+		istringstream ls(line);
+		string str;
+		uint32_t magic = 0;
+		int verMin = 0, Bits = 0;
+
+		parse(ls, str) && parse(ls, verMin) && parse(ls, Bits);
+		memcpy(&magic, str.substr(0, 4).data(), (str.size() < 4 ? str.size() : 4));
+		m_vMiscMetaData.emplace_back(magic, verMin, Bits);
+	}
+	return TRUE;
+}
+
+CString CDiabloEdit2App::PropertyDescription(DWORD version, WORD id, QWORD value) const {
 	const auto & meta = PropertyMetaData(version, id);
 	const auto desc = PropertyName(id);
 	auto a = meta.Parse(value);
@@ -557,7 +618,7 @@ CString CDiabloEdit2App::PropertyDescription(DWORD version, WORD id) const {
 	return PropertyDescription(version, id, PropertyMetaData(version, id).DefaultValue());
 }
 
-vector<CPropParam> CDiabloEdit2App::PropertyParameters(DWORD version, WORD id, DWORD value) const {
+vector<CPropParam> CDiabloEdit2App::PropertyParameters(DWORD version, WORD id, QWORD value) const {
 	const auto & meta = PropertyMetaData(version, id);
 	vector<CPropParam> ret;
 	for (auto & t : meta.GetParams(value))

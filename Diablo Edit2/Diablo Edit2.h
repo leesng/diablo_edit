@@ -34,6 +34,7 @@ public:
 public:
 	virtual BOOL InitInstance();
 	virtual int ExitInstance();
+	virtual void ParseCommandLine(CCommandLineInfo& rCmdInfo);
 
 // 实现
 	afx_msg void OnAppAbout();
@@ -45,12 +46,14 @@ public:
 	static const UINT CLASS_SKILL_NAME_SIZE = 30;			//每种角色技能数量
 	static const int CLASS_SKILL_INDEX[CLASS_NAME_SIZE][CLASS_SKILL_NAME_SIZE];	//每种角色每个技能索引偏移
 	INT m_nLangIndex = 0;			//当前语言索引
+	CString m_abModName = 0;			//mod 名字
+	INT m_nModIndex = 0;
 	// Functions
 	const CString & AppPath() const { return m_sAppPath; }
-	INT LangCount() const { return m_saLanguage.size(); }
-	CString PropertyDescription(DWORD version, WORD id, DWORD value) const;	//根据属性id和参数value,得到属性的描述字符串
+	INT LangCount() const { return (DWORD)m_saLanguage.size(); }
+	CString PropertyDescription(DWORD version, WORD id, QWORD value) const;	//根据属性id和参数value,得到属性的描述字符串
 	CString PropertyDescription(DWORD version, WORD id) const;				//根据属性id和参数value的默认值,得到属性的描述字符串
-	std::vector<CPropParam> PropertyParameters(DWORD version, WORD id, DWORD value) const;
+	std::vector<CPropParam> PropertyParameters(DWORD version, WORD id, QWORD value) const;
 	const CString & LangTitle(UINT index) const {
 		ASSERT(index < m_saLanguage.size());
 		return m_saLanguage[index][0];
@@ -124,9 +127,25 @@ public:
 	const CItemMetaData * ItemMetaData(DWORD typeID) const;	//如果没有,返回0
 	const CPropertyMetaDataItem& PropertyMetaData(DWORD version, UINT index) const {
 		ASSERT(index < m_vPropertyMetaData.size());
-		return m_vPropertyMetaData[index].findData(version);
+		return m_vPropertyMetaData[index].findData(version , m_nModIndex);  // 兼容MOD的属性修改
 	}
 	const CD2S_Struct & NewCharacter() const { return m_stNewCharacter; }	//返回新建人物模板
+
+	const INT MiscMetaData(DWORD version, UINT magic) const {
+		INT Bits = 0;
+		for (const auto& t : m_vMiscMetaData) {
+			if (magic == std::get<0>(t)) {
+				if (Bits == 0) {
+					Bits = std::get<2>(t);  // 获取第一个作为默认值
+				}
+				if ((std::get<1>(t) >> 24) == m_nModIndex) {
+					Bits = std::get<2>(t); // 获取第二个作为模组特定值
+				}
+			}
+		}
+		return Bits;
+	}
+
 private:
 	CString m_sAppPath;			//程序运行的目录
 	std::vector<std::vector<CString>> m_saLanguage;		//语言数据
@@ -172,12 +191,14 @@ private:
 	std::vector<std::vector<CItemMetaData>> m_vItemMetaData;			//物品元信息，根据物品种类分不同Section
 	std::unordered_map<DWORD, std::pair<UINT, UINT>> m_mIdToMetaData;	//物品TypeID到m_vItemMetaData的索引映射关系
 	std::vector<CPropertyMetaData> m_vPropertyMetaData;					//属性数据
+	std::vector<std::tuple<UINT, INT, INT>> m_vMiscMetaData;					//模组杂项数据
 	CD2S_Struct m_stNewCharacter;		//新建人物模板
 	//Functions
 	BOOL ReadLangRes();		//从资源文件里读取语言数据
 	BOOL ReadItemRes();		//从资源文件里读取物品数据
 	BOOL ReadPropRes();		//从资源文件里读取属性数据
 	BOOL ReadNewChar();		//从资源里读取新建人物模板
+	BOOL ReadMiscRes();		//从资源文件里读取模组杂项数据
 	const CString & String(UINT index) const {
 		ASSERT(index < m_saLanguage[m_nLangIndex].size());
 		return m_saLanguage[m_nLangIndex][index];
@@ -189,6 +210,27 @@ private:
 	UINT SectionToIndex(LangSection section, UINT index) const {
 		ASSERT(index < SectionSize(section));
 		return index + m_aLangBases[section];
+	}
+
+    // 匹配mod 索引
+	std::vector<CString> ModNameList = {
+	_T(""),
+	_T("PangLi2.0"),
+	_T("OldWang"),
+	_T("BigWang"),
+	_T("Sword"),
+	_T("Swordx"),
+	_T("Hdjy"),
+	_T("VIPer"),
+	_T("poi"),
+	};
+	int ModNameToIndex(const CString ModName) const {
+		for (int i = 0; i < ModNameList.size(); ++i) {
+			if (ModName == ModNameList[i]) {
+				return i;
+			}
+		}
+		return 0;
 	}
 };
 

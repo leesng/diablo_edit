@@ -234,10 +234,11 @@ void CGoldQuantity::WriteData(COutBitsStream& bs) const {
 }
 
 //struct CPropertyList
+#define PROPID_BITS 9
 
 void CPropertyList::ReadData(CInBitsStream& bs, DWORD version) {
 	dwVersion = version;
-	for (bs >> bits(iEndFlag, 9); bs.Good() && iEndFlag < 0x1FF; bs >> bits(iEndFlag, 9)) {
+	for (bs >> bits(iEndFlag, PROPID_BITS); bs.Good() && iEndFlag < ((1 << PROPID_BITS) - 1); bs >> bits(iEndFlag, PROPID_BITS)) {
 		const int b = ::theApp.PropertyMetaData(version, iEndFlag).Bits();
 		if (b > 0)
 			bs >> bits(mProperty.emplace_back(iEndFlag, 0).second, b);
@@ -249,7 +250,7 @@ void CPropertyList::WriteData(COutBitsStream& bs, DWORD version) const {
 		const auto item = ::theApp.PropertyMetaData(version, p.first);
 		const int b = item.Bits();
 		if (b > 0) {
-			DWORD value = p.second;
+			QWORD value = p.second;
 			if (version != dwVersion) {
 				const auto oldItem = ::theApp.PropertyMetaData(dwVersion, p.first);
 				if (&item != &oldItem) {
@@ -258,17 +259,17 @@ void CPropertyList::WriteData(COutBitsStream& bs, DWORD version) const {
 					value = item.GetValue(v).second;
 				}
 			}
-			bs << bits(p.first, 9) << bits(value, b);
+			bs << bits(p.first, PROPID_BITS) << bits(value, b);
 		}
 	}
-	bs << bits<WORD>(0x1FF, 9);
+	bs << bits<WORD>(((1 << PROPID_BITS) - 1), PROPID_BITS);
 }
 
 int CPropertyList::ExtSockets() const {
 	int r = 0;
 	for (auto& p : mProperty)
 		if (p.first == 194)	//194是额外孔属性ID
-			r += p.second;	//可能有多个194属性
+			r += (int)p.second;	//可能有多个194属性
 	return r;
 }
 
@@ -427,13 +428,16 @@ CTypeSpecificInfo::CTypeSpecificInfo(const CItemMetaData* meta) {
 	}
 }
 
+
 void CTypeSpecificInfo::ReadData(CInBitsStream& bs, DWORD version, BOOL bHasDef, BOOL bHasDur, BOOL bSocketed, BOOL bIsStacked, BOOL bIsSet, BOOL bRuneWord) {
 	if (bHasDef)
 		bs >> bits(iDefence, 11);
 	if (bHasDur) {
-		bs >> bits(iMaxDurability, 8);
+		//bs >> bits(iMaxDurability, ::theApp.m_nModIndex == 5 ? 12 : 8);
+		bs >> bits(iMaxDurability, ::theApp.MiscMetaData(0, 'RUDM')); // MDUR 
 		if (iMaxDurability)
-			bs >> bits(iCurDur, 9);
+			//bs >> bits(iCurDur, ::theApp.m_nModIndex == 5 ? 12 : 9);
+		    bs >> bits(iCurDur, ::theApp.MiscMetaData(0, 'RUDC')); // CDUR
 	}
 	if (bSocketed) {
 		bs >> bits(iSocket, 4);
@@ -458,9 +462,11 @@ void CTypeSpecificInfo::WriteData(COutBitsStream& bs, DWORD version, BOOL bHasDe
 	if (bHasDef)
 		bs << bits(iDefence, 11);
 	if (bHasDur) {
-		bs << bits(iMaxDurability, 8);
+		//bs << bits(iMaxDurability, ::theApp.m_nModIndex == 5 ? 12 : 8);
+		bs << bits(iMaxDurability, ::theApp.MiscMetaData(0, 'RUDM')); // MDUR
 		if (iMaxDurability)
-			bs << bits(iCurDur, 9);
+			//bs << bits(iCurDur, ::theApp.m_nModIndex == 5 ? 12 : 9);
+		    bs << bits(iCurDur, ::theApp.MiscMetaData(0, 'RUDC')); // CDUR
 	}
 	if (bSocketed)
 		bs << bits(iSocket, 4);

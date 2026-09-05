@@ -74,6 +74,7 @@ void CDlgCharBasicInfo::DoDataExchange(CDataExchange* pDX)
 {
 	CDialog::DoDataExchange(pDX);
 	DDX_Text(pDX, IDC_EDIT1, m_sVersion);
+	DDX_Text(pDX, IDC_EDIT20, ::theApp.m_abModName);
 	DDX_Control(pDX, IDC_COMBO1, m_cbCharClass);
 	DDX_Check(pDX, IDC_CHECK1, m_bLadder);
 	DDX_Check(pDX, IDC_CHECK2, m_bExpansion);

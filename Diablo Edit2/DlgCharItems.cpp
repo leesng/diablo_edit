@@ -633,7 +633,7 @@ void CDlgCharItems::AddItemInGrid(const CD2Item & item, int body) {
 	auto t = ItemToPosition(item.iLocation, item.iPosition, item.iColumn, item.iRow, item.iStoredIn, body, m_bIsD2R);
 	EPosition pos = get<0>(t);
 	const int x = get<1>(t), y = get<2>(t);
-	const int index = m_vItemViews.size();
+	const int index = (int)m_vItemViews.size();
 	 m_vItemViews.emplace_back(item, equip, pos, x, y);
 	if (::IsInMouse(pos)) {
 		ASSERT(m_iPickedItemIndex < 0);
@@ -647,7 +647,7 @@ void CDlgCharItems::AddItemInGrid(const CD2Item & item, int body) {
 		for (auto & gem : item.aGemItems) {
 			ASSERT(0 <= gem.iColumn && gem.iColumn < int(m_vItemViews[index].vGemItems.size()));
 			ASSERT(m_vItemViews[index].vGemItems[gem.iColumn] < 0);
-			m_vItemViews[index].vGemItems[gem.iColumn] = m_vItemViews.size();
+			m_vItemViews[index].vGemItems[gem.iColumn] = (int)m_vItemViews.size();
 			m_vItemViews.emplace_back(gem, ItemToEquip(gem), IN_SOCKET, gem.iColumn, 0);
 		}
 	}

@@ -64,7 +64,7 @@ struct CGoldQuantity
 
 struct CPropertyList
 {
-	std::vector<std::pair<WORD, DWORD>> mProperty;	//属性列表，每项（9 bits ID + VALUE)
+	std::vector<std::pair<WORD, QWORD>> mProperty;	//属性列表，每项（9 bits ID + VALUE)
 	WORD	iEndFlag;	//9 bits, 0x1FF, 结束标志
 
 	//Functons:

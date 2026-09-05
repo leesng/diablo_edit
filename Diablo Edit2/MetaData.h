@@ -50,7 +50,8 @@ struct CItemMetaData
 //属性的参数
 struct CPropertyField
 {
-	int bits, base, min, max;
+	int base;
+	unsigned int bits, min, max;
 	//Functions:
 	const CPropertyField & Normalize();
 };
@@ -67,12 +68,17 @@ public:
 	CPropertyMetaDataItem() {}
 	CPropertyMetaDataItem(DWORD verMin, const std::vector<CPropertyField> & fields, DWORD def);
 	int Bits() const { return bitsSum_; }
-	std::vector<int> Parse(DWORD value) const;
+	std::vector<int> Parse(QWORD value) const;
 	void Normalise(std::vector<int>& params) const;
-	std::vector<std::tuple<int, int, int>> GetParams(DWORD value) const;
-	std::pair<BOOL, DWORD> GetValue(const std::vector<int> & params) const;
+	std::vector<std::tuple<int, int, int>> GetParams(QWORD value) const;
+	std::pair<BOOL, QWORD> GetValue(const std::vector<int> & params) const;
 	DWORD DefaultValue() const { return def_; }
-	bool matchVersion(DWORD version) const { return verMin_ <= version; }
+	bool matchVersion(DWORD version, DWORD mod = 0) const {
+		if (mod && (verMin_ >> 24) && mod != (verMin_ >> 24)) {
+			return false;
+		}
+		return verMin_ <= version + (mod << 24);
+	}
 };
 
 //属性元数据
@@ -82,7 +88,7 @@ class CPropertyMetaData
 public:
 	CPropertyMetaData() {}
 	void addData(const CPropertyMetaDataItem& item);
-	const CPropertyMetaDataItem & findData(DWORD version) const;
+	const CPropertyMetaDataItem & findData(DWORD version, DWORD mod) const;
 };
 
 CString CSFormat(LPCTSTR lpszFormat, ...);

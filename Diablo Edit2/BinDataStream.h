@@ -60,7 +60,7 @@ public:
 		assert(data);
 		data_.assign(data, data + sz);
 	}
-	DWORD DataSize() const { return data_.size(); }
+	DWORD DataSize() const { return (DWORD)data_.size(); }
 	DWORD BytePos() const{return bytes_;}
 	bool Good() const { return !bad_; }
 	std::vector<BYTE> & Data() { return data_; }	//返回可修改的数据，主要用于CRC校验
@@ -74,14 +74,51 @@ public:
 		if (ensurePos(bytes_ - back))
 			bytes_ -= back;
 	}
+	void SeekBack(DWORD backBytes, DWORD backBits) {
+		assert(0 <= backBits  && backBits < 8);
+		if (bits_ >= backBits) {
+			bits_ = bits_ - backBits;
+		} else {
+			bits_ = bits_ + 8 - backBits;
+			SeekBack(1);
+		}
+		SeekBack(backBytes);
+	}
 	//跳过所有数据直到找到pattern，定位在pattern的首字符位置
 	void SkipUntil(const char * pattern) {
 		assert(pattern);
 		if (ensure(0)) {
 			const auto src = reinterpret_cast<const char *>(&data_[bytes_]);
 			const auto wh = std::strstr(src, pattern);
-			bytes_ = (wh ? bytes_ + (wh - src) : data_.size());
+			bytes_ = (wh ? bytes_ + (DWORD)(wh - src) : (DWORD)data_.size());
 		}
+	}
+	// 查找魔数字和掩码
+	UINT FindBitoffset(WORD magic, WORD endBits = 0) {
+		UINT i = 0;
+		UINT j = 0;
+		WORD WD[2] = {0};
+
+		for (i = bytes_; i + 1 < data_.size(); ++i) {
+			// 查找magic
+			WD[0] = ((WORD)data_[i + 1] << 8) | data_[i];
+			if (WD[0] == magic) {
+				if (i - 2 >= bytes_ && endBits != 0) {
+					// 查找 mask
+					WD[1] = ((WORD)data_[i - 1] << 8) | data_[i - 2];
+					for (j = 7; j >= 0 && j <= 7; --j) {
+						if ((WD[1] >> j) == (((WORD)1 << endBits) - 1)) {
+							return (i - bytes_) * 8 - (7 - j) - bits_ - endBits;
+						}
+					}
+
+				}
+				return (i - bytes_) * 8  - bits_;
+			}
+
+		}
+
+		return 0xffff;
 	}
 	//字节读取
 	CInBitsStream & operator >>(DWORD & value) {return readPod(value);}
@@ -107,6 +144,7 @@ public:
 		bits_ = 0;
 	}
 	CInBitsStream & operator >>(BOOL & b) {return readBits(bits(b, 1));}
+	CInBitsStream & operator >>(const Bits<QWORD> & m) { return readBits(m); }
 	CInBitsStream & operator >>(const Bits<DWORD> & m) { return readBits(m); }
 	CInBitsStream & operator >>(const Bits<WORD> & m) { return readBits(m); }
 	CInBitsStream & operator >>(const Bits<BYTE> & m) { return readBits(m); }
@@ -114,7 +152,7 @@ public:
 	CInBitsStream & operator >>(std::vector<BYTE> & vec){
 		if (ensure(0)) {
 			vec.assign(data_.begin() + bytes_, data_.end());
-			bytes_ = data_.size();
+			bytes_ = (DWORD)data_.size();
 		}
 		return *this;
 	}
@@ -216,6 +254,8 @@ public:
 		}
 	}
 	COutBitsStream & operator <<(BOOL b) { return writeBits(bits(b, 1)); }
+	COutBitsStream & operator <<(const Bits<const QWORD> & m) { return writeBits(m); }
+	COutBitsStream & operator <<(const Bits<QWORD> & m) { return writeBits(m); }
 	COutBitsStream & operator <<(const Bits<const DWORD> & m) { return writeBits(m); }
 	COutBitsStream & operator <<(const Bits<DWORD> & m) { return writeBits(m); }
 	COutBitsStream & operator <<(const Bits<const WORD> & m) { return writeBits(m); }
@@ -224,9 +264,9 @@ public:
 	COutBitsStream & operator <<(const Bits<BYTE> & m) { return writeBits(m); }
 	//vector<BYTE>
 	COutBitsStream & operator <<(const std::vector<BYTE> & data) {
-		if (ensure(data.size())) {
+		if (ensure((DWORD)data.size())) {
 			::CopyMemory(&data_[bytes_], &data[0], data.size());
-			bytes_ += data.size();
+			bytes_ += (DWORD)data.size();
 		}
 		return *this;
 	}
@@ -252,7 +292,7 @@ private:
 	bool ensure(DWORD bytes, DWORD bits = 0, DWORD maxBits = 0) {
 		bad_ = (bad_ || !(bits > 0 ? bits <= maxBits : bits_ == 0));
 		if (!bad_) {
-			const DWORD old = data_.size(), need = bytes + (bits_ + bits + 7) / 8;
+			const DWORD old = (DWORD)data_.size(), need = bytes + (bits_ + bits + 7) / 8;
 			if (bytes_ + need > old)
 				data_.resize(old + (old >> 1) + need);
 		}

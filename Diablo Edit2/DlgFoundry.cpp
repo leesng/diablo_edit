@@ -425,8 +425,8 @@ void CDlgFoundry::WriteExtItemInfo(CExtItemInfo & extInfo, BOOL & bPersonalized,
 		extInfo.wMonsterID.reset();
 }
 
-static vector<pair<WORD, DWORD>> filterPropList(const vector<pair<WORD, DWORD>> & props) {
-	vector<pair<WORD, DWORD>> ret;
+static vector<pair<WORD, QWORD>> filterPropList(const vector<pair<WORD, QWORD>> & props) {
+	vector<pair<WORD, QWORD>> ret;
 	for (auto & p : props)
 		if (p.first != NO_CODE)
 			ret.push_back(p);
@@ -658,8 +658,8 @@ void CDlgFoundry::SetupParamValue(UINT idx,BOOL enabled, const CPropParam & para
 	if (idx < size(m_cbParam))
 		m_cbParam[idx].ShowWindow(SW_HIDE);
 	if (enabled) {
-		ed.SetWindowText(CSFormat(_T("%d"), param.iValue));
-		m_sTip[idx] = (CSFormat(_T("%d - %d"), param.iMin, param.iMax));
+		ed.SetWindowText(CSFormat(_T("%u"), param.iValue));
+		m_sTip[idx] = (CSFormat(_T("%u - %u"), param.iMin, param.iMax));
 	} else {
 		ed.SetWindowText(_T(""));
 		m_sTip[idx] = (_T(""));
@@ -780,7 +780,7 @@ void CDlgFoundry::SetupParamTime(UINT idx, BOOL enabled, int value) {
 	});
 }
 
-void CDlgFoundry::SetupPropParameters(int id, int value, BOOL checked) {
+void CDlgFoundry::SetupPropParameters(int id, QWORD value, BOOL checked) {
 	ASSERT(0 <= id);
 	const auto p = ::theApp.PropertyParameters(m_stItem.dwVersion, id, value);
 	switch (id) {
@@ -913,7 +913,7 @@ void CDlgFoundry::OnLvnItemchangedList1(NMHDR *pNMHDR, LRESULT *pResult) {
 	*pResult = 0;
 }
 
-pair<BOOL, DWORD> CDlgFoundry::GatherParamaters(const CPropertyMetaDataItem & meta) const {
+pair<BOOL, QWORD> CDlgFoundry::GatherParamaters(const CPropertyMetaDataItem & meta) const {
 	vector<int> ret;
 	for (UINT i = 0; i < size(m_edParam); ++i) {
 		auto & ed = m_edParam[i];

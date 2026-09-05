@@ -19,7 +19,7 @@ static DWORD ComputCRC(const BYTE* source, DWORD len, DWORD init) {
 static BOOL ValidateCrc(std::vector<BYTE>& data, DWORD dwCrc, DWORD dwOff) {
 	ASSERT(dwOff + 4 <= data.size());
 	*reinterpret_cast<DWORD*>(&data[dwOff]) = 0;
-	return (dwCrc == ::ComputCRC(&data[0], data.size(), 0));
+	return (dwCrc == ::ComputCRC(&data[0], (DWORD)data.size(), 0));
 }
 
 //struct CQuestInfoData
@@ -88,10 +88,27 @@ void CWaypoints::WriteData(COutBitsStream& bs) const {
 
 //CPlayerStats
 
-static const DWORD PLAYER_STATS_BITS_COUNT[CPlayerStats::ARRAY_SIZE] = {
-	10,10,10,10,10,8,
-	21,21,21,21,21,21,
-	7,32,25,25
+// Mod 5
+static const DWORD PLAYER_STATS_BITS_COUNT_MOD5[CPlayerStats::ARRAY_SIZE] = {
+	11,11,11,11,10, 8,21,21,21,21,21,21, 7,32,32,32,
+	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+// Mod 6
+static const DWORD PLAYER_STATS_BITS_COUNT_MOD6[CPlayerStats::ARRAY_SIZE] = {
+	10,10,10,10,10, 8,22,23,22,23,21,22, 9,32,26,26,
+	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+
+// Mod 7
+static const DWORD PLAYER_STATS_BITS_COUNT_MOD7[CPlayerStats::ARRAY_SIZE] = {
+	10,10,10,10,10, 8,21,21,21,21,21,21,10,32,25,25,
+	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+};
+// Mod 8
+static const DWORD PLAYER_STATS_BITS_COUNT_MOD8[CPlayerStats::ARRAY_SIZE] = {
+	21,21,21,21,10, 8,21,21,21,21,21,21, 7,32,25,25,
+	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
 };
 
 void CPlayerStats::ReadData(CInBitsStream& bs) {
@@ -99,31 +116,139 @@ void CPlayerStats::ReadData(CInBitsStream& bs) {
 	if (wMajic != 0x6667)
 		throw ::theApp.MsgBoxInfo(15);
 	::ZeroMemory(m_adwValue, sizeof(m_adwValue));
-	for (bs >> bits(iEnd, 9); bs.Good() && iEnd < size(m_adwValue); bs >> bits(iEnd, 9))
-		bs >> bits(m_adwValue[iEnd], PLAYER_STATS_BITS_COUNT[iEnd]);
+
+	for (UINT Magic = 0, Bits = 0, i = 0; i < 0x10; i++) {
+		// ST00 ~ ST0F
+		if (i < 10) {
+			Magic = (((UINT)'0' + i) << 24) | ((UINT)'0' << 16) | ((UINT)'T' << 8) | ((UINT)'S');
+		} else {
+			Magic = (((UINT)'A' + i - 10) << 24) | ((UINT)'0' << 16) | ((UINT)'T' << 8) | ((UINT)'S');
+		}
+
+		Bits = ::theApp.MiscMetaData(0, Magic);
+		if (Bits != 0) {
+			PLAYER_STATS_BITS_COUNT[i] = Bits;
+		}
+	}
+
+	for (bs >> bits(iEnd, 9); bs.Good()/* && iEnd < size(m_adwValue)*/; bs >> bits(iEnd, 9)) {
+		if (iEnd < 0x10) {
+			bs >> bits(m_adwValue[iEnd], PLAYER_STATS_BITS_COUNT[iEnd]);
+		}
+		// 读取 mod  自定义数据
+		else if (iEnd != 511) {
+			UINT i = 0;
+
+			bs.SeekBack(9 / 8, 9 % 8);
+			iEnd = bs.FindBitoffset(0x6669, 9);
+			for (i = 0; i < iEnd / 32; ++i){
+				assert(0x10 + i < size(m_adwValue));
+				PLAYER_STATS_BITS_COUNT[0x10 + i] = 32;
+				bs >> bits(m_adwValue[0x10 + i], PLAYER_STATS_BITS_COUNT[0x10 + i]);
+			}
+			if (iEnd % 32) {
+				assert(0x10 + i < size(m_adwValue));
+				PLAYER_STATS_BITS_COUNT[0x10 + i] = iEnd % 32;
+				bs >> bits(m_adwValue[0x10 + i], PLAYER_STATS_BITS_COUNT[0x10 + i]);
+			}
+		} else {
+			break;
+		}
+	}
 	bs.AlignByte();
 }
 
 void CPlayerStats::WriteData(COutBitsStream& bs) const {
 	bs << WORD(0x6667);
-	for (UINT i = 0; bs.Good() && i < size(m_adwValue); ++i)
-		if (m_adwValue[i])
+	for (UINT i = 0; bs.Good() && i < size(m_adwValue); ++i) {
+		if (m_adwValue[i] && i < 0x10) {
 			bs << bits(WORD(i), 9) << bits(m_adwValue[i], PLAYER_STATS_BITS_COUNT[i]);
+		}
+		// 写入 mod 自定义数据
+		if (PLAYER_STATS_BITS_COUNT[i] && i >= 0x10) {
+			bs << bits(m_adwValue[i], PLAYER_STATS_BITS_COUNT[i]);
+		}
+	}
 	bs << bits<WORD>(0x1FF, 9);
 	bs.AlignByte();
 }
+/*
+void CPlayerStats::ReadData(CInBitsStream& bs) {
+	bs >> wMajic;
+	if (wMajic != 0x6667)
+		throw ::theApp.MsgBoxInfo(15);
+	::ZeroMemory(m_adwValue, sizeof(m_adwValue));
+	::ZeroMemory(m_awIndex, sizeof(m_awIndex));
+	WORD iEnd;
+	DWORD iBits;
+	for (UINT i = 0, j = 0x10; bs.Good() && i < size(m_adwValue); ++i) {
+		bs >> bits(iEnd, 9);
+		if (iEnd < 0x10) {
+			m_awIndex[iEnd] = iEnd;
+			iBits = ::theApp.m_nModIndex == 5 ? PLAYER_STATS_BITS_COUNT_MOD5[iEnd] : PLAYER_STATS_BITS_COUNT[iEnd];
+			bs >> bits(m_adwValue[iEnd], iBits);
+		} else {
+			m_awIndex[j] = iEnd;
+			if (iEnd == 0x1FF) {
+				break;
+			}
+			iBits = ::theApp.m_nModIndex == 5 ? PLAYER_STATS_BITS_COUNT_MOD5[j] : PLAYER_STATS_BITS_COUNT[j];
+			bs >> bits(m_adwValue[j], iBits);
+			j++;
+		}
+	}
 
+	bs.AlignByte();
+}
+
+void CPlayerStats::WriteData(COutBitsStream& bs) const {
+	bs << WORD(0x6667);
+	DWORD iBits;
+	for (UINT i = 0; bs.Good() && i < size(m_adwValue); ++i) {
+		if (m_awIndex[i] == 0x1FF) {
+			bs << bits(m_awIndex[i], 9);
+			break;
+		}
+		if (m_adwValue[i]) {
+			if (i < 0x10) {
+				bs << bits(WORD(i), 9);
+				iBits = ::theApp.m_nModIndex == 5 ? PLAYER_STATS_BITS_COUNT_MOD5[i] : PLAYER_STATS_BITS_COUNT[i];
+				bs << bits(m_adwValue[i], iBits);
+			} else {
+				bs << bits(m_awIndex[i], 9);
+				iBits = ::theApp.m_nModIndex == 5 ? PLAYER_STATS_BITS_COUNT_MOD5[i] : PLAYER_STATS_BITS_COUNT[i];
+				bs << bits(m_adwValue[i], iBits);
+			}
+		}
+	}
+	//bs << bits<WORD>(0x1FF, 9);
+	bs.AlignByte();
+}
+*/
 //struct CCharSkills
 
 void CCharSkills::ReadData(CInBitsStream& bs) {
 	bs >> wMagic;
 	if (wMagic != 0x6669)
 		throw ::theApp.MsgBoxInfo(16);
-	bs >> bSkillLevel;
+
+	for (UINT i = 0; bs.Good() && i < size(bSkillLevel); ++i) {
+		bs >> bSkillLevel[i];
+		if (i > 0 && bSkillLevel[i] == 0x4D && bSkillLevel[i-1] == 0x4A) { // NextMagic
+			bs.SeekBack(sizeof(WORD));
+			break;
+		}
+	}
 }
 
 void CCharSkills::WriteData(COutBitsStream& bs) const {
-	bs << WORD(0x6669) << bSkillLevel;
+	bs << WORD(0x6669);
+	for (UINT i = 0; bs.Good() && i < size(bSkillLevel); ++i) {
+		if (i+1 < size(bSkillLevel) && bSkillLevel[i+1] == 0x4D && bSkillLevel[i] == 0x4A) { // NextMagic
+			break;
+		}
+		bs << bSkillLevel[i];
+	}
 }
 
 //struct CCorpseData
@@ -330,7 +455,7 @@ BOOL CD2S_Struct::WriteData(COutBitsStream& bs) const {
 	bs << offset_value(offSize, bs.BytePos());
 	//CRC
 	auto& data = bs.Data();
-	const DWORD dwCrc = ::ComputCRC(&data[0], data.size(), 0);
+	const DWORD dwCrc = ::ComputCRC(&data[0], (DWORD)data.size(), 0);
 	bs << offset_value(offCrc, dwCrc);
 	return bs.Good();
 }

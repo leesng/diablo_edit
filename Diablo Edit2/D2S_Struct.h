@@ -68,7 +68,7 @@ struct CWaypoints
 //人物属性
 struct CPlayerStats
 {
-	static const int ARRAY_SIZE = 0x10;
+	static const int ARRAY_SIZE = 0x20;
 	WORD	wMajic;					//0x6667
 	DWORD	m_adwValue[ARRAY_SIZE];	/*以下为各个Value的含义：
 										0: 9 bits, + 10 bits Strength
@@ -88,6 +88,12 @@ struct CPlayerStats
 										E: 9 bits, + 25 bits Gold on Person
 										F: 9 bits, + 25 bits Gold in Stash */
 	WORD iEnd;						//0x1FF: 9 bits, 结束
+	//WORD m_awIndex[ARRAY_SIZE];
+	DWORD PLAYER_STATS_BITS_COUNT[ARRAY_SIZE] = {
+	10,10,10,10,10, 8,21,21,21,21,21,21, 7,32,25,25,
+	 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+	};
+
 	//Functions:
 	void Reset() {}
 	void ReadData(CInBitsStream& bs);
@@ -98,7 +104,7 @@ struct CPlayerStats
 struct CCharSkills
 {
 	WORD	wMagic;				//0x6669
-	BYTE	bSkillLevel[30];	//技能等级
+	BYTE	bSkillLevel[64];	//技能等级
 	//Functions:
 	void Reset() {}
 	void ReadData(CInBitsStream& bs);
